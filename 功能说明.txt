@@ -1,0 +1,4 @@
+1.此版本主要是移植cc2500，此版本是发送程序，通过验证成功
+
+参考程序
+https://wenku.baidu.com/view/49b0f16110661ed9ad51f3f3.html

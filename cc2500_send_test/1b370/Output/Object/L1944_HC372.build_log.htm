@@ -1,0 +1,121 @@
+<html>
+<body>
+<pre>
+<h1>礦ision Build Log</h1>
+<h2>Tool Versions:</h2>
+IDE-Version: μVision V5.23.0.0
+Copyright (C) 2017 ARM Ltd and ARM Germany GmbH. All rights reserved.
+License Information: limoss Microsoft, Microsoft, LIC=WHYBU-S25JV-XCAJB-0LPL2-UGX93-RW7MU
+ 
+Tool Versions:
+Toolchain:       MDK-ARM Plus  Version: 5.23
+Toolchain Path:  C:\Keil_v5\ARM\ARMCC\Bin
+C Compiler:      Armcc.exe V5.06 update 4 (build 422)
+Assembler:       Armasm.exe V5.06 update 4 (build 422)
+Linker/Locator:  ArmLink.exe V5.06 update 4 (build 422)
+Library Manager: ArmAr.exe V5.06 update 4 (build 422)
+Hex Converter:   FromElf.exe V5.06 update 4 (build 422)
+CPU DLL:         SARMCM3.DLL V5.23
+Dialog DLL:      DARMCM1.DLL V1.17.0.0
+Target DLL:      Segger\JL2CM3.dll V2.99.23.0
+Dialog DLL:      TARMCM1.DLL V1.12.0.0
+ 
+<h2>Project:</h2>
+E:\软件修改\L1944\L1944_HC372\modify_At_0420\1b370\L1014_HC370_Password.uvprojx
+Project File Date:  08/26/2019
+
+<h2>Output:</h2>
+*** Using Compiler 'V5.06 update 4 (build 422)', folder: 'C:\Keil_v5\ARM\ARMCC\Bin'
+Rebuild target 'Target 1'
+compiling stm32f0xx_it.c...
+compiling system.c...
+compiling stm32f0xx_adc.c...
+compiling main.c...
+User\main.c(1607): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *restrict"
+  																																strcpy(passwordtmp5,passwordtmp2);	//拷贝输入的密码，进行存储
+User\main.c(1607): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *restrict"
+  																																strcpy(passwordtmp5,passwordtmp2);	//拷贝输入的密码，进行存储
+User\main.c(1333): warning:  #177-D: variable "passwordtmp3"  was declared but never referenced
+  		u8 passwordtmp3[10];
+User\main.c(1817): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *restrict"
+  					strcpy( Password_Save1, Password_Save );
+User\main.c(1817): warning:  #167-D: argument of type "const u8 *" is incompatible with parameter of type "const char *restrict"
+  					strcpy( Password_Save1, Password_Save );
+User\main.c(1819): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+  			else if( strcmp(Password_Read,Password_Save) == 0 )	//返回值为0,表示二者相等  //重新修改后的密码,而且修改的密码与Password_Save相同
+User\main.c(1819): warning:  #167-D: argument of type "const u8 *" is incompatible with parameter of type "const char *"
+  			else if( strcmp(Password_Read,Password_Save) == 0 )	//返回值为0,表示二者相等  //重新修改后的密码,而且修改的密码与Password_Save相同
+User\main.c(1821): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "char *restrict"
+  					strcpy( Password_Save1, Password_Save );
+User\main.c(1821): warning:  #167-D: argument of type "const u8 *" is incompatible with parameter of type "const char *restrict"
+  					strcpy( Password_Save1, Password_Save );
+User\main.c(2046): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+  						          if(strcmp(Password_Save1,Password_Input)==0)		//密码相同		
+User\main.c(2046): warning:  #167-D: argument of type "u8 *" is incompatible with parameter of type "const char *"
+  						          if(strcmp(Password_Save1,Password_Input)==0)		//密码相同		
+User\main.c(2123): warning:  #177-D: variable "i"  was declared but never referenced
+  		uint8_t i=0,tmpclk=0;
+User\main.c: 12 warnings, 0 errors
+compiling stm32f0xx_can.c...
+compiling stm32f0xx_comp.c...
+compiling stm32f0xx_cec.c...
+compiling stm32f0xx_crc.c...
+compiling stm32f0xx_crs.c...
+compiling stm32f0xx_dac.c...
+compiling stm32f0xx_dbgmcu.c...
+compiling stm32f0xx_dma.c...
+compiling stm32f0xx_exti.c...
+compiling stm32f0xx_flash.c...
+compiling stm32f0xx_gpio.c...
+compiling stm32f0xx_i2c.c...
+compiling stm32f0xx_iwdg.c...
+compiling stm32f0xx_misc.c...
+compiling stm32f0xx_pwr.c...
+compiling stm32f0xx_rcc.c...
+compiling stm32f0xx_rtc.c...
+compiling stm32f0xx_spi.c...
+compiling stm32f0xx_syscfg.c...
+compiling stm32f0xx_tim.c...
+compiling stm32f0xx_wwdg.c...
+compiling stm32f0xx_usart.c...
+assembling startup_stm32f030x8.s...
+compiling lcd1602.c...
+compiling key.c...
+compiling cc2500b.c...
+compiling system_stm32f0xx.c...
+linking...
+Program Size: Code=31068 RO-data=308 RW-data=136 ZI-data=2120  
+FromELF: creating hex file...
+".\Output\Object\L1944_HC372.axf" - 0 Error(s), 12 Warning(s).
+
+<h2>Software Packages used:</h2>
+
+Package Vendor: ARM
+                http://www.keil.com/pack/ARM.CMSIS.5.1.1.pack
+                ARM::CMSIS:CORE:5.0.2
+                CMSIS (Cortex Microcontroller Software Interface Standard)
+   * Component: CORE Version: 5.0.2
+
+Package Vendor: Keil
+                http://www.keil.com/pack/Keil.STM32F0xx_DFP.1.5.0.pack
+                Keil::Device:Startup:2.2.3
+                STMicroelectronics STM32F0 Series Device Support and Examples
+   * Component: Startup Version: 2.2.3
+
+<h2>Collection of Component include folders:</h2>
+  .\RTE\_Target_1
+  C:\Keil_v5\ARM\PACK\ARM\CMSIS\5.1.1\CMSIS\Include
+  C:\Keil_v5\ARM\PACK\Keil\STM32F0xx_DFP\1.5.0\Device\Include
+
+<h2>Collection of Component Files used:</h2>
+
+   * Component: ARM::CMSIS:CORE:5.0.2
+
+   * Component: Keil::Device:Startup:2.2.3
+      Source file:   Device\Source\ARM\startup_stm32f030x8.s
+      Source file:   Device\Source\system_stm32f0xx.c
+      Source file:   Device\Source\ARM\STM32F0xx_OPT.s
+Build Time Elapsed:  00:00:04
+</pre>
+</body>
+</html>

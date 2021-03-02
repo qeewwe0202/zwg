@@ -1,0 +1,2261 @@
+#include "cc2500.h"
+#include "system.h"
+
+#define KEY_M1P         0x01
+#define KEY_M1M         0x02
+#define KEY_M2P         0x03
+#define KEY_M2M         0x04
+#define KEY_PAIR        0x14
+#define KEY_M1P2P       0x1E
+#define KEY_M1M2M       0x1F
+#define KEY_M3P         0x20
+#define KEY_M3M         0x21
+//#define KEY_M4P         0x22
+//#define KEY_M4M         0x23
+//#define KEY_M3P4P       0x26
+//#define KEY_M3M4M       0x27
+#define KEY_VB1P        0x28
+#define KEY_VB1M        0x29
+#define KEY_VB2P        0x2A
+#define KEY_VB2M        0x2B
+#define KEY_VB1M2M      0x2C
+#define KEY_VB1P2P      0x2D
+#define KEY_VB1S        0x2E
+#define KEY_VB2S        0x2F
+#define KEY_VBONOFF     0x30
+#define KEY_LED         0x31
+//#define KEY_M1P2P3P4P   0x32
+//#define KEY_M1M2M3M4M   0x33
+#define KEY_M1P2P3P     0x34
+#define KEY_M1M2M3M     0x35
+//#define KEY_M1P2P4P     0x36
+//#define KEY_M2M3M4M     0x37
+#define KEY_M1P3P       0x38
+#define KEY_M1M3M       0x39
+//#define KEY_M1P4P       0x3A
+//#define KEY_M1M4M       0x3B
+#define KEY_M2P3P       0x3C
+#define KEY_M2M3M       0x3D
+//#define KEY_M2P4P       0x3E
+//#define KEY_M2M4M       0x3F
+#define KEY_M1P2M       0x40
+#define KEY_M1M2P       0x41
+//#define KEY_M1M4P       0x42
+//#define KEY_M2M4P       0x43
+//#define KEY_M3M4P       0x44
+//#define KEY_M1M2M4P     0x45
+//#define KEY_M3P4M       0x46
+#define KEY_MEMORY      0x50
+#define KEY_MSET        0x51
+#define KEY_MRST        0x52
+#define KEY_M1R50_M2R25 0x53
+
+#define KEY_SAVE1       0x61
+#define KEY_SAVE2       0x62
+#define KEY_SAVE3       0x63
+#define KEY_SAVE4       0x64
+#define KEY_SAVE5       0x65
+#define KEY_SAVE6       0x66
+#define KEY_SAVE7       0x67
+#define KEY_SAVE8       0x68
+#define KEY_RECALL1     0x71
+#define KEY_RECALL2     0x72
+#define KEY_RECALL3     0x73
+#define KEY_RECALL4     0x74
+#define KEY_RECALL5     0x75
+#define KEY_RECALL6     0x76
+#define KEY_RECALL7     0x77
+#define KEY_RECALL8     0x78
+#define KEY_STOP        0x80
+
+#define M1M_ON      GPIO_SetBits(GPIOA, GPIO_Pin_13)
+#define M1M_OFF     GPIO_ResetBits(GPIOA, GPIO_Pin_13)
+#define M1P_ON      GPIO_SetBits(GPIOB, GPIO_Pin_12)
+#define M1P_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_12)
+#define M2M_ON      GPIO_SetBits(GPIOB, GPIO_Pin_11)
+#define M2M_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_11)
+#define M2P_ON      GPIO_SetBits(GPIOA, GPIO_Pin_12)
+#define M2P_OFF     GPIO_ResetBits(GPIOA, GPIO_Pin_12)
+#define M3P_ON      GPIO_SetBits(GPIOB, GPIO_Pin_14)
+#define M3P_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_14)
+#define M3M_ON      GPIO_SetBits(GPIOB, GPIO_Pin_10)
+#define M3M_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_10)
+#define M4M_ON      GPIO_SetBits(GPIOB, GPIO_Pin_2)
+#define M4M_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_2)
+#define M4P_ON      GPIO_SetBits(GPIOB, GPIO_Pin_13)
+#define M4P_OFF     GPIO_ResetBits(GPIOB, GPIO_Pin_13)
+
+#define MSR1_STATUS       GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_13)
+#define MSR2_STATUS       GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_14)
+#define MSR3_STATUS       GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_15)
+#define MSR4_STATUS       GPIO_ReadInputDataBit(GPIOF, GPIO_Pin_0)
+
+#define PWR_DET         GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0)
+
+#define KEYM1P      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_6)
+#define KEYM2P      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_5)
+#define KEYM3P      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_9)
+#define KEYM4P      GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_15)
+#define KEYM1M      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_8)
+#define KEYM2M      GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_1)
+#define KEYM3M      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_4)
+#define KEYM4M      GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_3)
+
+#define PWR_OFF         GPIO_SetBits(GPIOA, GPIO_Pin_14)
+#define PWR_ON          GPIO_ResetBits(GPIOA, GPIO_Pin_14)
+
+#define MT_PWR_ON       GPIO_ResetBits(GPIOA, GPIO_Pin_0)
+#define MT_PWR_OFF      GPIO_SetBits(GPIOA, GPIO_Pin_0)
+
+#define BEEP_ON     ;
+#define BEEP_OFF    ;
+
+#define CPU_ID_ADDR     ((u32)0x08007BE0)
+#define DES_ID_ADDR     ((u32)0x08007C00)
+#define ADC1_DR_ADDR    ((u32)0x40012440) //ADC1 regester address
+#define USART1_TDR_ADDR ((u32)0x40013828)
+#define USART1_RDR_ADDR ((u32)0x40013824)
+
+#define MDT_VALUE       100
+#define MHD_TIME        80   //default: 680ms
+
+
+//u8 HW_version[4] = {0x00,0x00,0x03,0x00};
+//u8 SW_version[4] = {0x00,0x00,0x04,0x02};
+//u8 KEY_number[4] = {0x01,0x00,0x00,0x08};
+u8 Link_Type;
+
+s16 Motor1_P = 0;
+s16 Motor1_M = 0;
+u16 MSR1_Last = 0;
+u16 MSR1_Target = 0;
+u16 MSR1_Setting = 0;
+u8 M1_detect_counter = 0;
+u8 M1_Calibration_status = 0;
+u16 M1_Start_data = 0;
+u16 M1_Ended_data = 0xFFFF;
+u16 M1_Rotation_counter = 0;
+u16 M1_Position_data = 0x7FFF;
+
+s16 Motor2_P = 0;
+s16 Motor2_M = 0;
+u16 MSR2_Last = 0;
+u16 MSR2_Target = 0;
+u16 MSR2_Setting = 0;
+u8 M2_detect_counter = 0;
+u8 M2_Calibration_status = 0;
+u16 M2_Start_data = 0;
+u16 M2_Ended_data = 0xFFFF;
+u16 M2_Rotation_counter = 0;
+u16 M2_Position_data = 0x7FFF;
+
+s16 Motor3_P = 0;
+s16 Motor3_M = 0;
+u16 MSR3_Last = 0;
+u16 MSR3_Target = 0;
+u16 MSR3_Setting = 0;
+u8 M3_detect_counter = 0;
+u8 M3_Calibration_status = 0;
+u16 M3_Start_data = 0;
+u16 M3_Ended_data = 0xFFFF;
+u16 M3_Rotation_counter = 0;
+u16 M3_Position_data = 0x7FFF;
+
+u8 Position_Save_enable = 0;
+
+u8 rRX_buffer[11] = {0};
+u8 bRX_buffer[11] = {0};
+u8 RX_data[11] = {0};
+u8 TX_buffer[11] = {0};
+u8 Last_ID_enable = 1;
+u8 bRX_buffer_CNT = 0;
+
+u8 RX_type = 0;
+
+u16 RF_pair_over = 0;
+
+u8 MY_ID[3] = {0};
+u8 DES_ID[9] = {0x00};
+u8 MEM_data[30];
+u8 MSR_data[8] = {0x00};
+u8 MSR_save_counter = 0;
+
+u8 rTX_buffer[13] = {0x00};
+u8 USART1_RX_BUFFER[10];
+u8 PWM1_Level = 0;
+u8 PWM2_Level = 0;
+u8 PWM1_last = 101;
+u8 PWM2_last = 101;
+
+u8 KEY_stop_counter = 0; 
+u8 RX_data_error = 0;
+u8 LED_enable = 0;
+
+u16 Head_counter = 10;
+u16 Foot_counter = 10;
+u16 RF_count = 0;
+u16 Holping_interval = 5;
+u16 Pairing_success_counter = 9999;
+u16 Pairing_waiting_counter = 0;
+
+u16 ACK_send_counter = 0;
+u16 ACK_enable_counter = 0;
+u16 Connect_overtime = 0;
+
+u8 RX_buffer[11] = {0x00};
+u8 RX_data_valid = 0;
+
+u8 Pairing_delay_counter = 0;
+u8 Slave_ACK_overtime = 0;
+u8 remote_counter = 0;
+
+u8 KEY_data = 0x00;
+u8 KEY_last = 0x00;
+
+u8 TX_Buffer[13] = {0x06,0x00,0x22,0x33,0x44,0x00,0x00,0x06,0x00,0x00,0x00,0x00,0x00};
+
+u8 Pairing_status = 0;
+u8 MRST_enable = 0;
+u8 M24RST_enable = 0;
+u16 CMD_counter = 0;
+
+typedef enum _RX_TYPE
+{
+	RX_TYPE_IDLE,
+	RX_TYPE_WR,
+	RX_TYPE_BT,
+	RX_TYPE_RF
+
+} RX_TYPE;
+
+void CLOCK_Configuration(void)
+{	
+    SystemInit ();
+}
+void GPIO_Configuration(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA | RCC_AHBPeriph_GPIOB | RCC_AHBPeriph_GPIOC | RCC_AHBPeriph_GPIOF, ENABLE);
+
+	//ouput
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_2 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	//input
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_1 | GPIO_Pin_15;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_8 | GPIO_Pin_9;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_DOWN;
+	GPIO_Init(GPIOB, &GPIO_InitStruct);
+}
+void GDO2_Configuration(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	EXTI_InitTypeDef EXTI_InitStruct;
+	NVIC_InitTypeDef NVIC_InitStruct;
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+
+	//PA3 ---> GDO2;
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_3;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI2_3_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 3;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource3);
+
+	EXTI_InitStruct.EXTI_Line = EXTI_Line3;
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Falling;
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStruct);
+}
+void PWM_Configuration(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0 | GPIO_Pin_1;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_1;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource0, GPIO_AF_2); //PWM1:TIM1_CH2N
+	GPIO_PinAFConfig(GPIOB, GPIO_PinSource1, GPIO_AF_2); //PWM2:TIM1_CH3N
+}
+void MSR_Configuration(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	EXTI_InitTypeDef EXTI_InitStruct;
+	NVIC_InitTypeDef NVIC_InitStruct;
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC | RCC_AHBPeriph_GPIOF, ENABLE);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_0;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOF, &GPIO_InitStruct);
+
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI0_1_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 1;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOF, EXTI_PinSource0);
+
+	EXTI_InitStruct.EXTI_Line = EXTI_Line0;
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//EXTI_Trigger_Falling;
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStruct);
+
+	///////////////////////////////
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_13;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI4_15_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 1;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource13);
+
+	EXTI_InitStruct.EXTI_Line = EXTI_Line13;
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//EXTI_Trigger_Falling;
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStruct);
+	///////////////////////////////
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_14;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI4_15_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 1;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource14);
+
+	EXTI_InitStruct.EXTI_Line = EXTI_Line14;
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//EXTI_Trigger_Falling;
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStruct);
+
+	///////////////////////////////
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_15;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_IN;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_NOPULL;
+	GPIO_Init(GPIOC, &GPIO_InitStruct);
+
+	NVIC_InitStruct.NVIC_IRQChannel = EXTI4_15_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 1;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+
+	SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, EXTI_PinSource15);
+
+	EXTI_InitStruct.EXTI_Line = EXTI_Line15;
+	EXTI_InitStruct.EXTI_Mode = EXTI_Mode_Interrupt;
+	EXTI_InitStruct.EXTI_Trigger = EXTI_Trigger_Rising_Falling;//EXTI_Trigger_Falling;
+	EXTI_InitStruct.EXTI_LineCmd = ENABLE;
+	EXTI_Init(&EXTI_InitStruct);
+}
+void SPI_Configuration(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	SPI_InitTypeDef SPI_InitStruct;
+
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource5, GPIO_AF_0);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource6, GPIO_AF_0);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource7, GPIO_AF_0);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_4;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_OUT;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+	GPIO_SetBits(GPIOA, GPIO_Pin_4);
+
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_5 | GPIO_Pin_6 | GPIO_Pin_7;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	//SPI config
+	SPI_InitStruct.SPI_Mode = SPI_Mode_Master;
+	SPI_InitStruct.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
+	SPI_InitStruct.SPI_NSS = SPI_NSS_Hard;
+	SPI_InitStruct.SPI_DataSize = SPI_DataSize_8b;
+	SPI_InitStruct.SPI_CPOL =  SPI_CPOL_Low;
+	SPI_InitStruct.SPI_CPHA = SPI_CPHA_1Edge;
+	SPI_InitStruct.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_32;
+	SPI_InitStruct.SPI_FirstBit = SPI_FirstBit_MSB;
+	SPI_InitStruct.SPI_CRCPolynomial = 7;
+	SPI_RxFIFOThresholdConfig(SPI1, SPI_RxFIFOThreshold_QF);
+	SPI_Init(SPI1, &SPI_InitStruct);
+
+	SPI_SSOutputCmd(SPI1, ENABLE);
+	SPI_Cmd(SPI1, ENABLE);
+}
+void TIM1_Configuration(void) //PWM
+{
+	TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
+	TIM_OCInitTypeDef  TIM_OCInitStructure;
+
+	/* Compute the value to be set in ARR regiter to generate signal frequency at 17.57 Khz */
+	u16 TimerPeriod = (SystemCoreClock / 1000 ) - 1;
+	/* Compute CCR2 value to generate a duty cycle at 37.5%  for channel 2 and 2N */
+	u16 Channel2Pulse = (uint16_t) (((uint32_t) PWM1_Level * (TimerPeriod - 1)) / 100);
+	/* Compute CCR3 value to generate a duty cycle at 25%  for channel 3 and 3N */
+	u16 Channel3Pulse = (uint16_t) (((uint32_t) PWM2_Level * (TimerPeriod - 1)) / 100);
+
+	/* TIM1 clock enable */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1 , ENABLE);
+
+	/* Time Base configuration */
+	TIM_TimeBaseStructure.TIM_Prescaler = 10;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseStructure.TIM_Period = TimerPeriod;
+	TIM_TimeBaseStructure.TIM_ClockDivision = 0;
+	TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(TIM1, &TIM_TimeBaseStructure);
+
+	/* Channel 1, 2,3 and 4 Configuration in PWM mode */
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM2;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = Channel2Pulse;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_Low;
+	TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
+	TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCIdleState_Reset;
+	TIM_OC2Init(TIM1, &TIM_OCInitStructure);
+
+	TIM_OCInitStructure.TIM_Pulse = Channel3Pulse;
+	TIM_OC3Init(TIM1, &TIM_OCInitStructure);
+
+	/* TIM1 counter enable */
+	TIM_Cmd(TIM1, ENABLE);
+
+	/* TIM1 Main Output Enable */
+	TIM_CtrlPWMOutputs(TIM1, ENABLE);
+}
+void TIM3_Configuration(void)
+{
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseStructure;
+	NVIC_InitTypeDef NVIC_InitStruct;
+
+	TIM_DeInit(TIM3);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	TIM_TimeBaseStructure.TIM_Period = 10 * 1000- 1; //10ms
+	TIM_TimeBaseStructure.TIM_Prescaler = 24 - 1;
+    TIM_TimeBaseStructure.TIM_ClockDivision = 1;
+	TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInit(TIM3, &TIM_TimeBaseStructure);
+	TIM_ITConfig(TIM3,TIM_IT_Update,ENABLE);
+	TIM_Cmd(TIM3, ENABLE);
+
+	NVIC_InitStruct.NVIC_IRQChannel = TIM3_IRQn;
+	NVIC_InitStruct.NVIC_IRQChannelPriority = 2;
+	NVIC_InitStruct.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStruct);
+}
+void USART1_Configuration(void)
+{
+	GPIO_InitTypeDef GPIO_InitStruct;
+	USART_InitTypeDef USART_InitStruct;
+
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1,ENABLE);
+
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_1);
+	GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_1);
+
+	//PA9 ---> USART1_TX
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	//PA10 ---> USART1_RX
+	GPIO_InitStruct.GPIO_Pin = GPIO_Pin_10;
+	GPIO_InitStruct.GPIO_Speed = GPIO_Speed_Level_3;
+	GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+	GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+	USART_ClearFlag(USART1, USART_FLAG_TC);
+
+	USART_InitStruct.USART_BaudRate = 9600;
+	USART_InitStruct.USART_WordLength = USART_WordLength_8b;
+	USART_InitStruct.USART_StopBits = USART_StopBits_1;
+	USART_InitStruct.USART_Parity = USART_Parity_No;
+	USART_InitStruct.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
+	USART_InitStruct.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
+	USART_Init(USART1, &USART_InitStruct);
+	USART_Cmd(USART1, ENABLE);
+}
+void DMA_Configuration(void)
+{
+	DMA_InitTypeDef DMA_InitStructure;
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+
+	DMA_DeInit(DMA1_Channel3);
+	DMA_InitStructure.DMA_PeripheralBaseAddr = USART1_RDR_ADDR;
+	DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)USART1_RX_BUFFER;
+	DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+	DMA_InitStructure.DMA_BufferSize = 10;
+	DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+	DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+	DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+	DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+	DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;
+	DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+	DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+	DMA_Init(DMA1_Channel3, &DMA_InitStructure);
+
+	USART_DMACmd(USART1, USART_DMAReq_Rx, ENABLE);
+	DMA_Cmd(DMA1_Channel3, ENABLE);
+}
+void DES_ID_Read()
+{
+	u32 i, addr;
+
+	addr = DES_ID_ADDR;
+	for(i = 0; i < 30; i++)
+	{
+		if(i < 6)
+			DES_ID[i] = (*(__IO uint32_t *)addr);
+		else
+			MEM_data[i - 6] =  (*(__IO uint32_t *)addr);
+
+		addr += 4;
+	}
+}
+void DES_ID_Write()
+{
+	u32 i, addr;
+
+	FLASH_Unlock();
+
+	FLASH_ClearFlag(FLASH_FLAG_EOP | FLASH_FLAG_PGERR | FLASH_FLAG_WRPERR);
+	addr = DES_ID_ADDR;
+	FLASH_ErasePage(addr);
+	for(i = 0; i < 30; i++)
+	{
+		if(i < 6)
+			FLASH_ProgramWord(addr, DES_ID[i]);
+		else
+			FLASH_ProgramWord(addr, MEM_data[i - 6]);
+        
+		addr += 4;
+	}
+
+	FLASH_Lock();
+}
+
+void Remote_ACK()
+{
+    u8 i;
+    
+    if(ACK_send_counter > 0 && ACK_enable_counter == 2)
+    {        
+        ACK_enable_counter = 0;
+        ACK_send_counter--;
+        
+        TX_Buffer[1]++;
+
+        TX_Buffer[6] = 0x00;
+        for(i = 1; i < 6; i++)
+            TX_Buffer[6] += TX_Buffer[i];    
+        
+        if(ACK_send_counter < 6)
+            RF_Send(TX_Buffer, 13);      
+    }
+}
+void CMD_Decode(u8 cmd_data)
+{
+    switch(cmd_data)
+    {                
+        case KEY_M1P:
+        {
+            if(M1_Position_data < (M1_Ended_data - 6))
+            {
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+                
+                Motor1_P = MHD_TIME;                
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_M1M:
+        {
+            if(M1_Position_data > (M1_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;   
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+       
+                Motor1_M = MHD_TIME;               
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0; 
+            break;
+        }
+        
+        case KEY_M2P:
+        {
+            if(M2_Position_data < (M2_Ended_data - 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;   
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+
+                Motor2_P = MHD_TIME;               
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0; 
+            break;
+        }
+        
+        case KEY_M2M:
+        {
+            if(M2_Position_data > (M2_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;     
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+      
+                Motor2_M = MHD_TIME;               
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0; 
+            break;
+        }
+        
+        case KEY_M3P:
+        {
+            if(M3_Position_data < (M3_Ended_data - 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;   
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0; 
+        
+                Motor3_P = MHD_TIME;              
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0;  
+            break;
+        }
+        
+        case KEY_M3M:
+        {
+            if(M3_Position_data > (M3_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;   
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0; 
+       
+                Motor3_M = MHD_TIME;               
+                MSR1_Setting = 0;                
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0; 
+            break;
+        }
+        
+        case KEY_M1P2P: 
+        {
+            if(M1_Position_data < (M1_Ended_data - 6))
+            {            
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0; 
+         
+                Motor1_P = MHD_TIME;               
+                MSR1_Setting = 0;               
+                MSR3_Setting = 0;
+            }
+            if(M2_Position_data < (M2_Ended_data - 6))
+            {
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+                
+                Motor2_P = MHD_TIME;               
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;              
+            }          
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_M1P2M:
+        {
+            if(M1_Position_data < (M1_Ended_data - 6))
+            {            
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0; 
+         
+                Motor1_P = MHD_TIME;               
+                MSR1_Setting = 0;               
+                MSR3_Setting = 0;
+            }
+            if(M2_Position_data > (M2_Start_data + 6))
+            {  
+                if(Motor2_P > 0)
+                    Motor2_P = 0;     
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+      
+                Motor2_M = MHD_TIME;                           
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_M1M2P:
+        {
+            if(M1_Position_data > (M1_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+       
+                Motor1_M = MHD_TIME;               
+                MSR1_Setting = 0;                               
+                MSR3_Setting = 0;
+            }
+            if(M2_Position_data < (M2_Ended_data - 6))
+            {
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+                
+                Motor2_P = MHD_TIME;               
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;              
+            }             
+            Last_ID_enable = 0;
+            break;
+        }        
+        case KEY_M1M2M:
+        {
+            if(M1_Position_data > (M1_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+       
+                Motor1_M = MHD_TIME;               
+                MSR1_Setting = 0;                               
+                MSR3_Setting = 0;
+            }
+            if(M2_Position_data > (M2_Start_data + 6))
+            {  
+                if(Motor2_P > 0)
+                    Motor2_P = 0;     
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor3_M > 0)
+                    Motor3_M = 0;
+      
+                Motor2_M = MHD_TIME;                           
+                MSR2_Setting = 0;                
+                MSR3_Setting = 0;
+            }            
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_LED:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                if(LED_enable == 0)
+                {
+                    LED_enable = 1;
+                    M4P_ON;
+                }
+                else
+                {
+                    LED_enable = 0;
+                    M4P_OFF;
+                }
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB1P:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM1_Level)
+                {                    
+                    case  0: PWM1_Level = 45;  break;
+                    case 45: PWM1_Level = 60;  break;
+                    case 60: PWM1_Level = 75;  break;
+                    case 75: PWM1_Level = 101; break;
+                }
+                TIM1_Configuration();
+                
+                PWM1_last = PWM1_Level;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB1M:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM1_Level)
+                {
+                    case 101: PWM1_Level = 75;  break;
+                    case  75: PWM1_Level = 60;  break;
+                    case  60: PWM1_Level = 45;  break;
+                    case  45: PWM1_Level = 0;   break;
+                }
+                TIM1_Configuration();
+                
+                PWM1_last = PWM1_Level;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB2P:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM2_Level)
+                {
+                    case  0: PWM2_Level = 45;  break;
+                    case 45: PWM2_Level = 60;  break;
+                    case 60: PWM2_Level = 75;  break;
+                    case 75: PWM2_Level = 101; break;
+                }
+                TIM1_Configuration();
+                
+                PWM2_last = PWM2_Level;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB2M:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM2_Level)
+                {
+                    case 101: PWM2_Level = 75;  break;
+                    case  75: PWM2_Level = 60;  break;
+                    case  60: PWM2_Level = 45;  break;
+                    case  45: PWM2_Level = 0;   break;
+                }
+                TIM1_Configuration();
+                
+                PWM2_last = PWM2_Level;
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB1P2P:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM1_Level)
+                {
+                    case 101: PWM1_Level = 75;  break;
+                    case  75: PWM1_Level = 60;  break;
+                    case  60: PWM1_Level = 45;  break;
+                    case  45: PWM1_Level = 0;   break;
+                }
+
+                switch(PWM2_Level)
+                {
+                    case 101: PWM2_Level = 75;  break;
+                    case  75: PWM2_Level = 60;  break;
+                    case  60: PWM2_Level = 45;  break;
+                    case  45: PWM2_Level = 0;   break;
+                }
+                
+                PWM1_last = PWM1_Level;
+                PWM2_last = PWM2_Level;
+                TIM1_Configuration();
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VB1M2M:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                switch(PWM1_Level)
+                {                    
+                    case  0: PWM1_Level = 45;  break;
+                    case 45: PWM1_Level = 60;  break;
+                    case 60: PWM1_Level = 75;  break;
+                    case 75: PWM1_Level = 101; break;
+                }
+
+                switch(PWM2_Level)
+                {
+                    case  0: PWM2_Level = 45;  break;
+                    case 45: PWM2_Level = 60;  break;
+                    case 60: PWM2_Level = 75;  break;
+                    case 75: PWM2_Level = 101; break;
+                }
+                
+                PWM1_last = PWM1_Level;
+                PWM2_last = PWM2_Level;
+                TIM1_Configuration();
+            }                        
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_VBONOFF:
+        {
+            if(KEY_stop_counter >= 10)
+            {                    
+                if(PWM1_Level == 101 && PWM2_Level == 101)
+                {
+                    PWM1_Level = PWM1_last;
+                    PWM2_Level = PWM2_last; 
+                }
+                else
+                {
+                    PWM1_last = PWM1_Level;
+                    PWM2_last = PWM2_Level;
+                    PWM1_Level = 101;
+                    PWM2_Level = 101;
+                }            
+                TIM1_Configuration();
+            }           
+            Last_ID_enable = 0;
+            break;
+        }        
+
+        case KEY_MRST:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                if(MRST_enable == 0)
+                {                
+                    MRST_enable = 1;
+                    
+                    if(M1_Position_data > (M1_Start_data + 6))
+                    {
+                        if(Motor1_P > 0)
+                            Motor1_P = 0;    
+                        if(Motor3_P > 0)
+                            Motor3_P = 0;    
+                        if(Motor3_M > 0)
+                            Motor3_M = 0;
+               
+                        Motor1_M = 32765;               
+                        MSR1_Setting = 0;                               
+                        MSR3_Setting = 0;
+                    }
+                    if(M2_Position_data > (M2_Start_data + 6))
+                    {  
+                        if(Motor2_P > 0)
+                            Motor2_P = 0;     
+                        if(Motor3_P > 0)
+                            Motor3_P = 0;    
+                        if(Motor3_M > 0)
+                            Motor3_M = 0;
+              
+                        Motor2_M = 32765;                           
+                        MSR2_Setting = 0;                
+                        MSR3_Setting = 0;
+                    }
+                }
+                else
+                {
+                    MRST_enable = 0;
+                    
+                    Motor1_P = 0;
+                    Motor1_M = 0;
+                    Motor2_P = 0;
+                    Motor2_M = 0;                
+                }
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_M1R50_M2R25:
+        {
+            if(KEY_stop_counter >= 10)
+            {
+                if(M24RST_enable == 0)
+                {
+                    M24RST_enable = 1;
+                    
+                    MSR1_Target = 0x1111 + ((M1_Ended_data - 0x1111)>>1);
+                    MSR2_Target = 0x1111 + ((M2_Ended_data - 0x1111)>>2);
+                    
+                    //MOTO_1
+                    if(MSR1_Target > (M1_Position_data + 6))
+                    {
+                        if(Motor1_M > 0)
+                            Motor1_M = 0;
+                        Motor1_P = 32765;                
+                        MSR1_Setting = 1;
+                    }
+                    else if(MSR1_Target < (M1_Position_data - 6))
+                    {
+                        if(Motor1_P > 0)
+                            Motor1_P = 0;
+                        Motor1_M = 32765;                
+                        MSR1_Setting = 1;
+                    }
+                    //MOTO_2
+                    if(MSR2_Target > (M2_Position_data + 6))
+                    {
+                        if(Motor2_M > 0)
+                            Motor2_M = 0;
+                        Motor2_P = 32765;                
+                        MSR2_Setting = 1;
+                    }
+                    else if(MSR2_Target < (M2_Position_data - 6))
+                    {
+                        if(Motor2_P > 0)
+                            Motor2_P = 0;
+                        Motor2_M = 32765;                
+                        MSR2_Setting = 1;
+                    }         
+                }
+                else
+                {
+                    M24RST_enable = 0;
+                    
+                    Motor1_P = 0;
+                    Motor1_M = 0;
+                    Motor2_P = 0;
+                    Motor2_M = 0;
+                }
+            }    
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_M1P3P: 
+        {            
+            if(M1_Position_data < (M1_Ended_data - 6))
+            {            
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0; 
+         
+                Motor1_P = MHD_TIME;               
+                MSR1_Setting = 0;               
+                MSR2_Setting = 0;
+            }
+            if(M3_Position_data < (M3_Ended_data - 6))
+            {
+                if(Motor3_M > 0)
+                    Motor3_M = 0;                 
+                if(Motor2_P > 0)
+                    Motor2_P = 0;   
+                if(Motor2_M > 0)
+                    Motor2_M = 0; 
+         
+                Motor3_P = MHD_TIME;               
+                MSR2_Setting = 0;               
+                MSR3_Setting = 0;
+            }            
+            Last_ID_enable = 0;
+            break;
+        }
+     
+        case KEY_M1M3M: 
+        {            
+            if(M1_Position_data > (M1_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0;
+       
+                Motor1_M = MHD_TIME;               
+                MSR1_Setting = 0;                               
+                MSR2_Setting = 0;
+            }
+            if(M3_Position_data > (M3_Start_data + 6))
+            {
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0;
+       
+                Motor3_M = MHD_TIME;               
+                MSR3_Setting = 0;                               
+                MSR2_Setting = 0;
+            }            
+            Last_ID_enable = 0;
+            break;
+        }
+     
+        case KEY_M2P3P: 
+        {            
+            if(M2_Position_data < (M2_Ended_data - 6))
+            {
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;
+                
+                Motor2_P = MHD_TIME;               
+                MSR2_Setting = 0;                
+                MSR1_Setting = 0;              
+            } 
+            if(M3_Position_data < (M3_Ended_data - 6))
+            {
+                if(Motor3_M > 0)
+                    Motor3_M = 0;                 
+                if(Motor1_P > 0)
+                    Motor1_P = 0;   
+                if(Motor1_M > 0)
+                    Motor1_M = 0; 
+         
+                Motor3_P = MHD_TIME;               
+                MSR3_Setting = 0;               
+                MSR1_Setting = 0;
+            }             
+            Last_ID_enable = 0;
+            break;
+        }
+     
+        case KEY_M2M3M:
+        {
+            if(M2_Position_data > (M2_Start_data + 6))
+            {  
+                if(Motor2_P > 0)
+                    Motor2_P = 0;     
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;
+      
+                Motor2_M = MHD_TIME;                           
+                MSR2_Setting = 0;                
+                MSR1_Setting = 0;
+            }
+            if(M3_Position_data > (M3_Start_data + 6))
+            {
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;
+       
+                Motor3_M = MHD_TIME;               
+                MSR3_Setting = 0;                               
+                MSR1_Setting = 0;
+            }               
+            Last_ID_enable = 0;
+            break;
+        }
+     
+        case KEY_M1P2P3P:
+        {
+            if(M1_Position_data < (M1_Ended_data - 6))
+            {            
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+         
+                Motor1_P = MHD_TIME;               
+                MSR1_Setting = 0;               
+            }            
+            if(M2_Position_data < (M2_Ended_data - 6))
+            {
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                
+                Motor2_P = MHD_TIME;               
+                MSR2_Setting = 0;                          
+            } 
+            if(M3_Position_data < (M3_Ended_data - 6))
+            {
+                if(Motor3_M > 0)
+                    Motor3_M = 0;                 
+         
+                Motor3_P = MHD_TIME;               
+                MSR3_Setting = 0;               
+            }
+            Last_ID_enable = 0;
+            break;
+        }
+     
+        case KEY_M1M2M3M: 
+        {            
+            if(M1_Position_data > (M1_Start_data + 6))
+            {
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+       
+                Motor1_M = MHD_TIME;               
+                MSR1_Setting = 0;                               
+            }
+            if(M2_Position_data > (M2_Start_data + 6))
+            {  
+                if(Motor2_P > 0)
+                    Motor2_P = 0;     
+      
+                Motor2_M = MHD_TIME;                           
+                MSR2_Setting = 0;                
+            } 
+            if(M3_Position_data > (M3_Start_data + 6))
+            {
+                if(Motor3_P > 0)
+                    Motor3_P = 0;    
+       
+                Motor3_M = MHD_TIME;               
+                MSR3_Setting = 0;                               
+            }              
+            Last_ID_enable = 0;
+            break;
+        }
+        
+        case KEY_SAVE1: 
+        {              
+            MSR1_Target = (MEM_data[12]<<8) + MEM_data[13];
+            MSR2_Target = (MEM_data[14]<<8) + MEM_data[15];
+            MSR3_Target = (MEM_data[16]<<8) + MEM_data[17]; 
+            if(MSR1_Target != M1_Position_data || MSR2_Target != M2_Position_data || MSR3_Target != M3_Position_data)
+            {
+                MEM_data[12] = (u8)(M1_Position_data>>8);
+                MEM_data[13] = (u8)(M1_Position_data);
+                MEM_data[14] = (u8)(M2_Position_data>>8);
+                MEM_data[15] = (u8)(M2_Position_data);
+                MEM_data[16] = (u8)(M3_Position_data>>8);
+                MEM_data[17] = (u8)(M3_Position_data);
+                DES_ID_Write();                             
+            }
+            break;
+        }
+        
+        case KEY_SAVE2: 
+        {              
+            MSR1_Target = (MEM_data[18]<<8) + MEM_data[19];
+            MSR2_Target = (MEM_data[20]<<8) + MEM_data[21];
+            MSR3_Target = (MEM_data[22]<<8) + MEM_data[23]; 
+            if(MSR1_Target != M1_Position_data || MSR2_Target != M2_Position_data || MSR3_Target != M3_Position_data)
+            {
+                MEM_data[18] = (u8)(M1_Position_data>>8);
+                MEM_data[19] = (u8)(M1_Position_data);
+                MEM_data[20] = (u8)(M2_Position_data>>8);
+                MEM_data[21] = (u8)(M2_Position_data);
+                MEM_data[22] = (u8)(M3_Position_data>>8);
+                MEM_data[23] = (u8)(M3_Position_data);
+                DES_ID_Write();                             
+            }
+            break;
+        }
+        
+        case KEY_SAVE3: 
+        {              
+            MSR1_Target = (MEM_data[24]<<8) + MEM_data[25];
+            MSR2_Target = (MEM_data[26]<<8) + MEM_data[27];
+            MSR3_Target = (MEM_data[28]<<8) + MEM_data[29]; 
+            if(MSR1_Target != M1_Position_data || MSR2_Target != M2_Position_data || MSR3_Target != M3_Position_data)
+            {
+                MEM_data[24] = (u8)(M1_Position_data>>8);
+                MEM_data[25] = (u8)(M1_Position_data);
+                MEM_data[26] = (u8)(M2_Position_data>>8);
+                MEM_data[27] = (u8)(M2_Position_data);
+                MEM_data[28] = (u8)(M3_Position_data>>8);
+                MEM_data[29] = (u8)(M3_Position_data);
+                DES_ID_Write();                             
+            }
+            break;
+        }
+        
+        case KEY_RECALL1:
+        {
+            if(MSR1_Setting == 0 && MSR2_Setting == 0 && MSR3_Setting == 0)
+            {
+                DES_ID_Read();
+                MSR1_Target = (MEM_data[12]<<8) + MEM_data[13];
+                MSR2_Target = (MEM_data[14]<<8) + MEM_data[15];
+                MSR3_Target = (MEM_data[16]<<8) + MEM_data[17]; 
+                //MOTO_1
+                if(MSR1_Target > (M1_Position_data + 6))
+                {
+                    if(Motor1_M > 0)
+                        Motor1_M = 0;
+                    Motor1_P = 32765;                
+                    MSR1_Setting = 1;
+                }
+                else if(MSR1_Target < (M1_Position_data - 6))
+                {
+                    if(Motor1_P > 0)
+                        Motor1_P = 0;
+                    Motor1_M = 32765;                
+                    MSR1_Setting = 1;
+                }                    
+                //MOTO_2
+                if(MSR2_Target > (M2_Position_data + 6))
+                {
+                    if(Motor2_M > 0)
+                        Motor2_M = 0;
+                    Motor2_P = 32765;                
+                    MSR2_Setting = 1;
+                }
+                else if(MSR2_Target < (M2_Position_data - 6))
+                {
+                    if(Motor2_P > 0)
+                        Motor2_P = 0;
+                    Motor2_M = 32765;                
+                    MSR2_Setting = 1;
+                }                                       
+                //MOTO_3
+                if(MSR3_Target > (M3_Position_data + 6))
+                {
+                    if(Motor3_M > 0)
+                        Motor3_M = 0;
+                    Motor3_P = 32765;                
+                    MSR3_Setting = 1;
+                }
+                else if(MSR3_Target < (M3_Position_data - 6))
+                {
+                    if(Motor3_P > 0)
+                        Motor3_P = 0;
+                    Motor3_M = 32765;                
+                    MSR3_Setting = 1;
+                }                                                        
+                Last_ID_enable = 0;
+            }            
+            break;
+        }
+        
+        case KEY_RECALL2:
+        {
+            if(MSR1_Setting == 0 && MSR2_Setting == 0 && MSR3_Setting == 0)
+            {
+                DES_ID_Read();
+                MSR1_Target = (MEM_data[18]<<8) + MEM_data[19];
+                MSR2_Target = (MEM_data[20]<<8) + MEM_data[21];
+                MSR3_Target = (MEM_data[22]<<8) + MEM_data[23]; 
+                //MOTO_1
+                if(MSR1_Target > (M1_Position_data + 6))
+                {
+                    if(Motor1_M > 0)
+                        Motor1_M = 0;
+                    Motor1_P = 32765;                
+                    MSR1_Setting = 1;
+                }
+                else if(MSR1_Target < (M1_Position_data - 6))
+                {
+                    if(Motor1_P > 0)
+                        Motor1_P = 0;
+                    Motor1_M = 32765;                
+                    MSR1_Setting = 1;
+                }                    
+                //MOTO_2
+                if(MSR2_Target > (M2_Position_data + 6))
+                {
+                    if(Motor2_M > 0)
+                        Motor2_M = 0;
+                    Motor2_P = 32765;                
+                    MSR2_Setting = 1;
+                }
+                else if(MSR2_Target < (M2_Position_data - 6))
+                {
+                    if(Motor2_P > 0)
+                        Motor2_P = 0;
+                    Motor2_M = 32765;                
+                    MSR2_Setting = 1;
+                }                                       
+                //MOTO_3
+                if(MSR3_Target > (M3_Position_data + 6))
+                {
+                    if(Motor3_M > 0)
+                        Motor3_M = 0;
+                    Motor3_P = 32765;                
+                    MSR3_Setting = 1;
+                }
+                else if(MSR3_Target < (M3_Position_data - 6))
+                {
+                    if(Motor3_P > 0)
+                        Motor3_P = 0;
+                    Motor3_M = 32765;                
+                    MSR3_Setting = 1;
+                }                                                        
+                Last_ID_enable = 0;
+            }            
+            break;
+        }
+        
+        case KEY_RECALL3:
+        {
+            if(MSR1_Setting == 0 && MSR2_Setting == 0 && MSR3_Setting == 0)
+            {
+                DES_ID_Read();
+                MSR1_Target = (MEM_data[24]<<8) + MEM_data[25];
+                MSR2_Target = (MEM_data[26]<<8) + MEM_data[27];
+                MSR3_Target = (MEM_data[28]<<8) + MEM_data[29]; 
+                //MOTO_1
+                if(MSR1_Target > (M1_Position_data + 6))
+                {
+                    if(Motor1_M > 0)
+                        Motor1_M = 0;
+                    Motor1_P = 32765;                
+                    MSR1_Setting = 1;
+                }
+                else if(MSR1_Target < (M1_Position_data - 6))
+                {
+                    if(Motor1_P > 0)
+                        Motor1_P = 0;
+                    Motor1_M = 32765;                
+                    MSR1_Setting = 1;
+                }                    
+                //MOTO_2
+                if(MSR2_Target > (M2_Position_data + 6))
+                {
+                    if(Motor2_M > 0)
+                        Motor2_M = 0;
+                    Motor2_P = 32765;                
+                    MSR2_Setting = 1;
+                }
+                else if(MSR2_Target < (M2_Position_data - 6))
+                {
+                    if(Motor2_P > 0)
+                        Motor2_P = 0;
+                    Motor2_M = 32765;                
+                    MSR2_Setting = 1;
+                }                                       
+                //MOTO_3
+                if(MSR3_Target > (M3_Position_data + 6))
+                {
+                    if(Motor3_M > 0)
+                        Motor3_M = 0;
+                    Motor3_P = 32765;                
+                    MSR3_Setting = 1;
+                }
+                else if(MSR3_Target < (M3_Position_data - 6))
+                {
+                    if(Motor3_P > 0)
+                        Motor3_P = 0;
+                    Motor3_M = 32765;                
+                    MSR3_Setting = 1;
+                }                                                        
+                Last_ID_enable = 0;
+            }            
+            break;
+        }
+        
+        default:
+        {
+            if(Motor1_P > 0)
+                Motor1_P = 0;    
+            if(Motor1_M > 0)
+                Motor1_M = 0;    
+            if(Motor2_P > 0)
+                Motor2_P = 0;    
+            if(Motor2_M > 0)
+                Motor2_M = 0;    
+            if(Motor3_P > 0)
+                Motor3_P = 0;    
+            if(Motor3_M > 0)
+                Motor3_M = 0;
+            MSR1_Setting = 0;
+            MSR2_Setting = 0;
+            MSR3_Setting = 0;
+        }            
+    }
+    
+    KEY_stop_counter = 0;
+}
+void RXdata_Process()
+{
+    u8 i;
+    
+    if(Motor1_P < 1 && Motor1_M < 1 && Motor2_P < 1 && Motor2_M < 1 && Motor3_P < 1 && Motor3_M < 1)
+        Last_ID_enable = 1;
+    
+    if(RX_data_valid && Pairing_waiting_counter > 25)// && (Link_Type == RX_TYPE_RF || Link_Type == RX_TYPE_IDLE))
+    {        
+        RX_ENABLE = 0;
+        
+        if(RX_data[6] == 0x14 && Pairing_waiting_counter < 1200)
+        {            
+            Pairing_waiting_counter = 1200;
+            Pairing_success_counter = 0;
+            Link_Type = RX_TYPE_RF;
+            Connect_overtime = 0;
+            RX_data_error = 0;
+            ACK_send_counter = 5;            
+            Remote_ACK();
+            
+            //save ID
+            for(i = 0; i < 3; i++)
+            {                    
+                DES_ID[3 + i] = DES_ID[i];
+                DES_ID[i] = RX_data[i + 3];
+            }        
+            DES_ID_Write();
+            
+            //Indication
+            M1P_ON;
+            Delay_ms(990);
+            M1P_OFF;    
+            Delay_ms(10);
+            M1M_ON;
+            Delay_ms(990);
+            M1M_OFF;    
+            Delay_ms(10);
+            M1P_ON;
+            Delay_ms(990);
+            M1P_OFF;    
+            Delay_ms(10);
+            M1M_ON;
+            Delay_ms(990);
+            M1M_OFF;           
+        }        
+        else if((RX_data[3] == DES_ID[0] && RX_data[4] == DES_ID[1] && RX_data[5] == DES_ID[2])
+             || (RX_data[3] == DES_ID[3] && RX_data[4] == DES_ID[4] && RX_data[5] == DES_ID[5]))
+        {
+            if(Last_ID_enable)
+            {
+                DES_ID[6] = RX_data[3];
+                DES_ID[7] = RX_data[4];
+                DES_ID[8] = RX_data[5];
+            }
+                                                
+            
+            if(Pairing_waiting_counter < 1200)
+                Pairing_waiting_counter = 1200;
+            
+            Link_Type = RX_TYPE_RF;
+            Connect_overtime = 0;
+            RX_data_error = 0;
+            ACK_send_counter = 5;
+            Remote_ACK();
+            
+            if(Pairing_success_counter == 9999)
+            {
+                if(DES_ID[6] == RX_data[3] && DES_ID[7] == RX_data[4] && DES_ID[8] == RX_data[5])
+                {
+                    CMD_counter = 0;
+                    CMD_Decode(RX_data[6]);
+                }
+            }
+            
+            if(CMD_counter == 300)
+            {
+                Last_ID_enable = 1;
+                CMD_counter = 0;
+            }
+        }
+        else  //无效数据
+        {
+            RX_data_error++;
+            if(RX_data_error == 5)
+            {                            
+                RX_data_error = 0;
+                Hopping();
+                Holping_interval = 5;
+            }
+        }
+        
+        for(i = 1; i < 8; i++)
+            RX_data[i] = 0x00;
+        
+        RX_data[6] = 0;    
+        RX_data_valid = 0;   
+        RX_ENABLE = 1;
+        
+        spi_Strobe(CC2500_SIDLE);
+        spi_Strobe(CC2500_SFRX);
+        spi_Strobe(CC2500_SRX);
+    }     
+}
+void TIM3_IRQHandler(void) //10ms
+{
+	TIM_ClearITPendingBit(TIM3 , TIM_FLAG_Update); 
+    
+    if(Connect_overtime < 100)
+        Connect_overtime++;
+    
+     if(CMD_counter < 300)
+        CMD_counter++;
+     
+    if(Motor1_P > -10)
+        Motor1_P--;    
+    if(Motor1_M > -10)
+        Motor1_M--;
+    if(Motor2_P > -10)
+        Motor2_P--;    
+    if(Motor2_M > -10)
+        Motor2_M--;
+    if(Motor3_P > -10)
+        Motor3_P--;    
+    if(Motor3_M > -10)
+        Motor3_M--;
+	if(M1_detect_counter < MDT_VALUE)
+		M1_detect_counter++;
+	if(M2_detect_counter < MDT_VALUE)
+		M2_detect_counter++;
+	if(M3_detect_counter < MDT_VALUE)
+		M3_detect_counter++;    
+     if(Motor1_P > 0 || Motor1_M > 0)
+     {
+         M1_Rotation_counter++;
+         if(M1_detect_counter == MDT_VALUE)
+         {
+             if(M1_Rotation_counter > 100)
+             {
+                MSR1_Setting = 0;
+                if(Motor1_P > 0)
+                {
+                    M1_Ended_data = M1_Position_data;
+                    Motor1_P = 0;
+                }
+                else if(Motor1_M > 0)
+                {
+                    M1_Position_data = 0x1111;                    
+                    M1_Start_data = M1_Position_data;
+                    Motor1_M = 0;
+                }
+             }
+        }
+     }
+     else
+         M1_Rotation_counter = 0;     
+     if(Motor2_P > 0 || Motor2_M > 0)
+     {
+         M2_Rotation_counter++;
+         if(M2_Rotation_counter > 100 && M2_detect_counter == MDT_VALUE)
+         {
+            MSR2_Setting = 0;
+            if(Motor2_P > 0)
+            {
+                M2_Ended_data = M2_Position_data;
+                Motor2_P = 0;
+            }
+            else if(Motor2_M > 0)
+            {
+                M2_Position_data = 0x1111;                    
+                M2_Start_data = M2_Position_data;
+                Motor2_M = 0;
+            }              
+         }
+     }
+     else
+         M2_Rotation_counter = 0;
+     if(Motor3_P > 0 || Motor3_M > 0)
+     {
+         M3_Rotation_counter++;
+         if(M3_Rotation_counter > 100 && M3_detect_counter == MDT_VALUE)
+         {
+            MSR3_Setting = 0;
+            if(Motor3_P > 0)
+            {
+                M3_Ended_data = M3_Position_data;
+                Motor3_P = 0;
+            }
+            if(Motor3_M > 0)
+            {
+                M3_Position_data = 0x1111;                    
+                M3_Start_data = M3_Position_data;
+                Motor3_M = 0;
+            }
+         }
+     }
+     else
+         M3_Rotation_counter = 0;     
+     //wait pairing
+     if(Pairing_waiting_counter < 9999)
+     {
+        if(Pairing_waiting_counter < 1200)
+        {        
+            Pairing_waiting_counter++;
+            
+            if(Pairing_waiting_counter == 1 || Pairing_waiting_counter == 200 || Pairing_waiting_counter == 400 || Pairing_waiting_counter == 600 || Pairing_waiting_counter == 800 || Pairing_waiting_counter == 1000)
+                BEEP_ON;
+            
+            if(Pairing_waiting_counter == 20 || Pairing_waiting_counter == 220 || Pairing_waiting_counter == 420 || Pairing_waiting_counter == 620 || Pairing_waiting_counter == 820 || Pairing_waiting_counter == 1200)
+                BEEP_OFF;     
+        }
+        else if(Pairing_waiting_counter == 1200)
+        {
+            Pairing_waiting_counter = 9999;
+            BEEP_OFF;
+        }
+    }
+    //wait pairing comlete 
+    if(Pairing_success_counter < 9999)
+    {    
+        if(Pairing_success_counter < 600)
+        {        
+            Pairing_success_counter++;
+            
+            switch(Pairing_success_counter)
+            {
+                case 1: 
+                    Motor1_P = 100;
+                    BEEP_OFF;
+                    break;
+                
+                case 100: 
+                    Motor1_M = 100;                       
+                    break;
+                
+                case 200: 
+                    Motor1_P = 100;
+                    break;
+                
+                case 300: 
+                    Motor1_M = 100;
+                    break;
+                
+                case 400: 
+                    Motor1_P = 0;             
+                    Motor1_M = 0;
+                    BEEP_ON;
+                    break;
+                
+                case 600: 
+                    BEEP_OFF;
+                    break;
+            }
+        }
+        else if(Pairing_success_counter == 600)
+        {
+            Pairing_success_counter = 9999;
+            BEEP_OFF;
+        }
+    }
+    
+    
+    //active RF_receive
+    {
+        if(RF_count < 100)
+            RF_count++;
+        else
+        {  
+            CC2500_Init();
+            Connect_overtime = 0;
+            RX_data_error = 0;
+            RF_count = 0;
+        }
+    }        
+    
+    //key release
+    if(KEY_stop_counter < 20)
+        KEY_stop_counter++;
+    
+    if(ACK_enable_counter < 2)
+        ACK_enable_counter++;
+}
+void EXTI0_1_IRQHandler(void) //MSR
+{
+    Delay_us(200); 
+    EXTI_ClearITPendingBit(EXTI_Line0);
+}
+void EXTI2_3_IRQHandler(void) //GDO2
+{
+	u8 i, checksum = 0;
+            
+    RF_count = 0;
+    
+	if(EXTI_GetITStatus(EXTI_Line3) && RX_ENABLE)
+	{      
+        spi_ReadStatus(CC2500_RXBYTES);
+        for(i = 0; i < 10; i++)
+            RX_buffer[i] = spi_ReadReg(CC2500_RXFIFO);  
+
+        spi_Strobe(CC2500_SIDLE);
+
+        if(RX_buffer[1] == 0x06 && RX_buffer[8] == 0x06)
+        {
+            for(i = 2; i < 7; i++)
+            {
+                RX_data[i] = RX_buffer[i];
+                checksum += RX_buffer[i];                
+            }
+            
+            if(checksum == RX_buffer[7]) //有效数据
+            {
+                RX_data_valid = 1;
+                Holping_interval = 80;
+                Connect_overtime = 0;
+            }
+            else  //无效数据
+            {
+                RX_data_error++;
+                if(RX_data_error == 5)
+                {                            
+                    RX_data_error = 0;
+                    Holping_interval = 5;
+                    Connect_overtime = 9999;  //跳频
+                }
+            }
+        }
+	}
+    
+    EXTI_ClearITPendingBit(EXTI_Line3);
+}
+void EXTI4_15_IRQHandler(void) //MSR
+{   
+    Delay_us(200);
+    
+    if(MSR1_Last != MSR1_STATUS)    
+    {        
+        MSR1_Last = MSR1_STATUS;       
+        M1_detect_counter = 0; 
+        
+        EXTI_ClearITPendingBit(EXTI_Line13);
+        
+        if(Motor1_M < -6)
+        {
+            M1_Position_data++;
+            
+            if(M1_Position_data >= MSR1_Target)
+            {
+                if(MSR1_Setting)
+                {
+                    MSR1_Setting = 0;
+                    Motor1_P = 0;
+                }
+            }
+        }            
+        else if(Motor1_P < -6)
+        {
+            M1_Position_data--;
+            
+            if(M1_Position_data <= MSR1_Target)
+            {
+                if(MSR1_Setting)
+                {
+                    MSR1_Setting = 0;
+                    Motor1_M = 0;
+                }
+            }
+        }
+    }   
+
+    if(MSR2_Last != MSR2_STATUS)     
+    {        
+        MSR2_Last = MSR2_STATUS; 
+        M2_detect_counter = 0;
+        
+        EXTI_ClearITPendingBit(EXTI_Line14);
+        
+        if(Motor2_M < -6)
+        {
+            M2_Position_data++;
+            
+            if(M2_Position_data >= MSR2_Target)
+            {
+                if(MSR2_Setting)
+                {
+                    MSR2_Setting = 0;
+                    Motor2_P = 0;
+                }
+            }
+        }            
+        else if(Motor2_P < -6)
+        {
+            M2_Position_data--;
+            
+            if(M2_Position_data <= MSR2_Target)
+            {
+                if(MSR2_Setting)
+                {
+                    MSR2_Setting = 0;
+                    Motor2_M = 0;
+                }
+            }
+        }
+    }
+    
+//    if(MSR3_Last != MSR3_STATUS)    
+//    {
+//        MSR3_Last = MSR3_STATUS;
+//        M3_detect_counter = 0;
+
+//        EXTI_ClearITPendingBit(EXTI_Line15);
+//        
+//        if(Motor3_M < -6)
+//        {
+//            M3_Position_data++;
+//            
+//            if(M3_Position_data >= MSR3_Target)
+//            {
+//                if(MSR3_Setting)
+//                {
+//                    MSR3_Setting = 0;
+//                    Motor3_P = 0;
+//                }
+//            }
+//        }            
+//        else if(Motor3_P < -6)
+//        {
+//            M3_Position_data--;
+//            
+//            if(M3_Position_data <= MSR3_Target)
+//            {
+//                if(MSR3_Setting)
+//                {
+//                    MSR3_Setting = 0;
+//                    Motor3_M = 0;
+//                }
+//            }
+//        }
+//    }
+    
+    EXTI_ClearITPendingBit(EXTI_Line13);
+    EXTI_ClearITPendingBit(EXTI_Line14);
+    EXTI_ClearITPendingBit(EXTI_Line15);
+}
+void CMD_Init()
+{
+	u8 i;
+
+	Delay_ms(100);
+
+	//my id
+	MY_ID[0] = *(u8 *)0x08007BE0;
+	MY_ID[1] = *(u8 *)0x08007BE1;
+	MY_ID[2] = *(u8 *)0x08007BE2;
+
+	printf("\r\nCPU_ID: ");
+	for(i = 0; i < 3; i++)
+		printf("%02X ",MY_ID[i]);
+
+	//update id data
+	DES_ID_Read();               
+	printf("\r\nDES_ID: ");
+	for(i = 0; i < 6; i++)
+		printf("%02X ",DES_ID[i]);
+    
+    M1_Position_data = (MEM_data[0]<<8) + MEM_data[1];
+    M2_Position_data = (MEM_data[2]<<8) + MEM_data[3];
+    M3_Position_data = (MEM_data[4]<<8) + MEM_data[5];    
+    M1_Ended_data = (MEM_data[6]<<8) + MEM_data[7];
+    M2_Ended_data = (MEM_data[8]<<8) + MEM_data[9];
+    M3_Ended_data = (MEM_data[10]<<8) + MEM_data[11];
+}
+void RF_Hopping()
+{	
+    if(Connect_overtime >= Holping_interval)
+	{       
+        Hopping();
+		Connect_overtime = 0;
+        Holping_interval = 6;
+	}
+}
+void Key_Scan(void)
+{
+	u8 KEY_data = 0x00;
+    
+    if(Link_Type == RX_TYPE_WR || Link_Type == RX_TYPE_IDLE)
+    {
+        Link_Type = RX_TYPE_WR;
+        
+        if(KEYM1P == 1)
+            KEY_data = KEY_M1P;
+
+        if(KEYM1M == 1)
+        {
+            if(KEY_data == 0)
+                KEY_data = KEY_M1M;
+            else
+                KEY_data = KEY_STOP;
+        }
+
+        if(KEYM2P == 1)
+        {
+            if(KEY_data == 0)
+                KEY_data = KEY_M2P;
+            else
+                KEY_data = KEY_STOP;
+        }
+
+        if(KEYM2M == 1)
+        {
+            if(KEY_data == 0)
+                KEY_data = KEY_M2M;
+            else
+                KEY_data = KEY_STOP;
+        }
+
+        //generate a stop command after release the key
+        if(KEY_last != KEY_data)
+        {        
+            KEY_last = KEY_data;
+            
+            if(KEY_data == 0x00)
+               KEY_data = KEY_STOP;
+        }
+
+        //update control mode
+        if(KEY_data != 0 && (Link_Type == RX_TYPE_WR || Link_Type == RX_TYPE_IDLE))
+        {
+            Link_Type = RX_TYPE_WR;     //enter wire control mode
+            
+            //exit memory recall
+            if(MSR1_Setting ||MSR2_Setting ||MSR3_Setting)
+            {
+                MSR1_Setting = 0;
+                MSR2_Setting = 0;
+                MSR3_Setting = 0;
+                
+                if(Motor1_P > 0)
+                    Motor1_P = 0;    
+                if(Motor1_M > 0)
+                    Motor1_M = 0;    
+                if(Motor2_P > 0)
+                    Motor2_P = 0;    
+                if(Motor2_M > 0)
+                    Motor2_M = 0;    
+                
+                KEY_data = 0x00;
+            }
+            
+            //decode the command
+            CMD_Decode(KEY_data);
+        }
+    }
+}
+void Motor_Control(void)
+{
+    u32 sum;    
+	//MOTOR-1   
+	if(Motor1_P > 0 && Motor1_P < 32765 && Motor1_M == -10)
+        M1P_ON;         
+    else
+        M1P_OFF;	
+    if(Motor1_M > 0 && Motor1_M < 32765 && Motor1_P == -10)
+        M1M_ON;           
+	else
+        M1M_OFF;
+    
+	//MOTOR-2   
+	if(Motor2_P > 0 && Motor2_P < 32755 && Motor2_M == -10)
+        M2P_ON;         
+    else
+        M2P_OFF;	
+    if(Motor2_M > 0 && Motor2_M < 32755 && Motor2_P == -10)
+        M2M_ON;           
+	else
+        M2M_OFF;
+    
+	//MOTOR-3   
+	if(Motor3_P > 0 && Motor3_P < 32745 && Motor3_M == -10)
+        M3P_ON;         
+    else
+        M3P_OFF;	
+    if(Motor3_M > 0 && Motor3_M < 32745 && Motor3_P == -10)
+        M3M_ON;           
+	else
+        M3M_OFF;
+
+    sum = Motor1_P + Motor1_M + Motor2_P + Motor2_M + Motor3_P + Motor3_M + 60;
+    if(sum == 0)
+    {        
+        Link_Type = RX_TYPE_IDLE;
+        if(Position_Save_enable)
+        {
+            Position_Save_enable = 0;
+            DES_ID_Read();
+            MEM_data[0] = (u8)(M1_Position_data>>8);
+            MEM_data[1] = (u8)(M1_Position_data);
+            MEM_data[2] = (u8)(M2_Position_data>>8);
+            MEM_data[3] = (u8)(M2_Position_data);
+            MEM_data[4] = (u8)(M3_Position_data>>8);
+            MEM_data[5] = (u8)(M3_Position_data);            
+            MEM_data[6] = (u8)(M1_Ended_data>>8);
+            MEM_data[7] = (u8)(M1_Ended_data);
+            MEM_data[8] = (u8)(M2_Ended_data>>8);
+            MEM_data[9] = (u8)(M2_Ended_data);
+            MEM_data[10] = (u8)(M3_Ended_data>>8);
+            MEM_data[11] = (u8)(M3_Ended_data);            
+            DES_ID_Write();
+        }
+    }
+    else
+        Position_Save_enable = 1;
+}
+void SYS_Init(void)
+{   
+    CMD_Init();
+	CC2500_Init();    
+    MT_PWR_ON;
+}
+
+int main(void)
+{    
+    CLOCK_Configuration();
+    GPIO_Configuration();
+	GDO2_Configuration();
+	MSR_Configuration();
+	TIM3_Configuration();
+	USART1_Configuration();
+	DMA_Configuration();
+	SPI_Configuration();
+
+    PWM1_Level = 101;
+    PWM2_Level = 101;
+    PWM_Configuration();
+    TIM1_Configuration();
+    
+	SYS_Init();
+
+	while(1)
+	{        
+        Key_Scan();  
+        RXdata_Process();      
+        Motor_Control();
+        RF_Hopping();
+        Remote_ACK();
+	}
+}
+
